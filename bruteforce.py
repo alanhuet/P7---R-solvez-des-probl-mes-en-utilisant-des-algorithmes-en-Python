@@ -1,6 +1,7 @@
 import csv
 
 fichier_actions = "data/Liste+d'actions+-+P7+Python+-+Feuille+1.csv"
+budget_max = 500
 
 
 def charger_actions(fichier_actions):
@@ -52,3 +53,23 @@ def bruteforce_recursif(actions, budget_max, index=0):
             return profit_avec, [action_courante] + combo_avec
 
     return profit_sans, combo_sans
+
+
+if __name__ == "__main__":
+    actions = charger_actions(fichier_actions)
+
+    profit_total, combinaison = bruteforce_recursif(actions, budget_max)
+
+    cout_total = sum(act["cout"] for act in combinaison)
+
+    print("\n--- MEILLEUR INVESTISSEMENT TROUVÉ ---")
+    print(f"Nombre d'actions achetées : {len(combinaison)}")
+    print(f"Coût total : {cout_total:.2f} € / {budget_max} €")
+    print(f"Profit total après 2 ans : {profit_total:.2f} €")
+
+    print("Actions sélectionnées :")
+    for action in combinaison:
+        print(
+            f"- {action['nom']} | Coût: {action['cout']} € | "
+            f"Profit: {action['profit_euros']} €"
+            )

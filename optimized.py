@@ -5,6 +5,7 @@ DATASET_1 = "data/dataset1_Python+P7.csv"
 DATASET_2 = "data/dataset2_Python+P7.csv"
 
 budget_max_euros = 500
+facteur_echelle = 10
 
 
 def charger_actions(fichier_actions):
@@ -37,41 +38,51 @@ def charger_actions(fichier_actions):
     return actions
 
 
-def programmation_dynamique(actions, budget_max_euros):
+def programmation_dynamique_1d(actions, budget_max_euros, facteur_echelle):
+    """Trouve la meilleure combinaison d'actions pour maximiser le profit.
 
-    budget_centimes = int(budget_max_euros * 100)
+    Convertit les prix au dixième d'euro pour exécuter le calcul en moins
+    d'une seconde.
+    """
+    # Conversion du budget en unités entières
+    budget_unites = int(budget_max_euros * facteur_echelle)
     n = len(actions)
 
-    # Initialisation de laa matrice (n + 1) x ( budget_centimes + 1)
-    matrice = [[0.0] * (budget_centimes + 1) for _ in range(n+1)]
+    # Conversion des coûts en entiers et extraction des profits
+    costs = [int(round(a["cout"] * facteur_echelle)) for a in actions]
+    profits = [a["profit_euros"] for a in actions]
 
-    # 1. Remplissage du tablzeau
-    for i in range(1, n + 1):
-        action = actions[i - 1]
-        cout_centimes = int(round(action['cout'] * 100))
-        profit = action['profit_euros']
+    # dp[w] : Meilleur profit possible pour un budget w
+    dp = [0.0] * (budget_unites + 1)
 
-        for w in range(budget_centimes + 1):
-            if cout_centimes <= w:
-                matrice[i][w] = max(
-                    matrice[i - 1][w],
-                    round(profit + matrice[i - 1][w - cout_centimes], 2),
-                )
-            else:
-                matrice[i][w] = matrice[i - 1][w]
+    # keep[i][w] : Booléen indiquant si l'action i est retenue pour le budget w
+    keep = [[False] * (budget_unites + 1) for _ in range(n)]
 
-    # 2. Backtracking pour retrouver les actions sélectionnées
-    w = budget_centimes
-    actions_selectionnees = []
+    # Remplissage du tableau de mémorisation
+    for i in range(n):
+        c = costs[i]
+        p = profits[i]
 
-    for i in range(n, 0, -1):
-        if matrice[i][w] != matrice[i - 1][w]:
-            action_achetee = actions[i - 1]
-            actions_selectionnees.append(action_achetee)
-            w -= int(round(action_achetee['cout'] * 100))
+        if c > budget_unites:
+            continue
 
-    profit_total = matrice[n][budget_centimes]
-    return profit_total, actions_selectionnees
+        # parcours inversé : élimine le risque de réutiliser la même action
+        for w in range(budget_unites, c - 1, -1):
+            nouveau_profit = dp[w - c] + p
+            if nouveau_profit > dp[w]:
+                dp[w] = nouveau_profit
+                keep[i][w] = True
+
+    # Reconstruction du portefeuille optimal (Backtracking)
+    w = budget_unites
+    actions_selectionees = []
+
+    for i in range(n - 1, -1, -1):
+        if keep[i][w]:
+            actions_selectionees.append(actions[i])
+            w -= costs[i]
+
+    return round(dp[budget_unites], 2), actions_selectionees
 
 
 def executer_analyse(chemin_fichier):
@@ -80,8 +91,8 @@ def executer_analyse(chemin_fichier):
     actions = charger_actions(chemin_fichier)
 
     temps_debut = time.time()
-    profit_total, combinaison = programmation_dynamique(
-        actions, budget_max_euros
+    profit_total, combinaison = programmation_dynamique_1d(
+        actions, budget_max_euros, facteur_echelle
         )
     temps_fin = time.time()
 
@@ -95,6 +106,12 @@ def executer_analyse(chemin_fichier):
           )
     print(f"Profit sur 2 ans : {profit_total:.2f} €")
     print(f"Temps de calcul : {duree:.4f} secondes")
+    print("\nActions sélectionnées :")
+    for action in combinaison:
+        print(
+            f"- {action['nom']} | Coût: {action['cout']:.2f} € | Profit:"
+            f" {action['profit_euros']:.2f} €"
+        )
 
 
 if __name__ == "__main__":
